@@ -62,12 +62,18 @@ fn craft_fonts(dir: &std::path::Path) -> Result<String, String> {
     let manifest = dir.join("fonts/manifest.txt");
     println!("cargo::rerun-if-changed={}", manifest.display());
     let text = std::fs::read_to_string(&manifest).map_err(|e| format!("{}: {e}", manifest.display()))?;
+    // Web builds have a size budget (e.g. Cloudflare's 25 MiB per file): embed only the UI font there.
+    const WEB_FONTS: &[(&str, &str)] = &[("BIZ UDPGothic", "Regular")];
+    let wasm = std::env::var("CARGO_CFG_TARGET_ARCH").is_ok_and(|a| a == "wasm32");
     let mut out = String::new();
     for line in text.lines().map(str::trim).filter(|l| !l.is_empty() && !l.starts_with('#')) {
         let f: Vec<&str> = line.split(" | ").map(str::trim).collect();
         let [family, style, file, scripts, ..] = f.as_slice() else {
             return Err(format!("malformed manifest line: {line}"));
         };
+        if wasm && !WEB_FONTS.contains(&(*family, *style)) {
+            continue;
+        }
         let path = dir.join(file).canonicalize().map_err(|e| format!("{file}: {e}"))?;
         println!("cargo::rerun-if-changed={}", path.display());
         let scripts: Vec<String> = scripts.split(',').map(|s| format!("{:?}", s.trim())).collect();
@@ -107,6 +113,9 @@ app was built without craft-fonts. Code that uses it must work when it is empty.
   the app was built with craft-fonts.
 - **Document text engines:** register them as fallback faces for Japanese, after the document's
   requested font and the app's bundled fonts.
+- **Web (wasm32):** the recipe embeds only `BIZ UDPGothic Regular` (~4.5 MB); all four fonts are
+  ~24 MB, over typical per-file hosting limits. If the app's web build has a size check, measure
+  with `CRAFT_FONTS_DIR` set and shrink `WEB_FONTS` (even to empty) if it fails.
 - Prefer `BIZ UDPGothic` for UI text and `Shippori Mincho` / `BIZ UDMincho` for serif document
   text.
 - Tests that assert on these fonts' glyphs must skip (not fail) when `CRAFT_FONTS` is empty, and
