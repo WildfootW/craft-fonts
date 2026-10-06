@@ -15,7 +15,7 @@ option is an environment variable instead.
 
 ```sh
 git clone https://github.com/storytold/craft-fonts ../craft-fonts
-CRAFT_FONTS_DIR=../craft-fonts cargo build --release
+CRAFT_FONTS_DIR=$PWD/../craft-fonts cargo build --release
 ```
 
 - **Unset** (the default): nothing changes. The app uses its own bundled fonts and system fonts.
@@ -25,8 +25,9 @@ CRAFT_FONTS_DIR=../craft-fonts cargo build --release
   carries on without craft-fonts, unless `CRAFT_FONTS_REQUIRED=1` is also set, which turns it
   into a build error. Release workflows set both, so a release can't silently ship without them.
 
-Use a relative or absolute path; `CRAFT_FONTS_DIR` is read by `build.rs`, so changing it rebuilds
-only the crate that embeds the fonts.
+Use an **absolute** path (e.g. `CRAFT_FONTS_DIR=$PWD/../craft-fonts`): Cargo runs build scripts in
+the crate's own directory, so a relative path would resolve from there. `CRAFT_FONTS_DIR` is read by
+`build.rs`, so changing it rebuilds only the crate that embeds the fonts.
 
 ## The `build.rs` recipe
 
